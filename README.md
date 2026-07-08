@@ -76,6 +76,21 @@ individual o en ZIP, igual que los segmentos de corte por km.
 Si el GPX no tiene suficientes datos de elevación (`<ele>`), esta funcionalidad se desactiva
 y se muestra un aviso.
 
+## Perfil de elevación
+
+Debajo del resumen del track se muestra un gráfico de área (distancia vs. elevación,
+`src/components/ElevationProfile.tsx`, con `recharts`) que incluye:
+
+- Líneas verticales discontinuas rojas en cada punto kilométrico de corte.
+- Bandas verdes sobre los tramos detectados como ascenso (más intensa si el ascenso está
+  seleccionado en la lista).
+- Banda naranja sobre el segmento de corte seleccionado en `SegmentDownloads`.
+- Tooltip al pasar el ratón con la elevación exacta en cada punto.
+
+Si el GPX no tiene datos de elevación, se muestra un aviso en vez del gráfico. Para tracks muy
+largos, `services/elevationProfile.ts` reduce el número de puntos representados (máx. ~400)
+para mantener el gráfico fluido sin perder la forma del perfil.
+
 ## Notas del MVP
 
 - No hay backend, base de datos ni autenticación.
