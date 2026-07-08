@@ -104,15 +104,6 @@ export default function App() {
         <>
           <TrackSummary fileName={fileName} points={points} />
 
-          <ElevationProfile
-            points={points}
-            cutPointsKm={cutPoints.map((cp) => cp.km)}
-            segments={segments}
-            ascents={ascents}
-            highlightedSegmentId={selectedSegmentId}
-            highlightedAscentId={selectedAscentId}
-          />
-
           <CutPointsTable
             cutPoints={cutPoints}
             totalDistanceKm={totalDistanceKm}
@@ -139,6 +130,14 @@ export default function App() {
             <>
               <AscentDetectionPanel config={ascentConfig} onChange={setAscentConfig} />
               {ascentError && <p className="app__error">{ascentError}</p>}
+              <ElevationProfile
+                points={points}
+                cutPointsKm={cutPoints.map((cp) => cp.km)}
+                segments={segments}
+                ascents={ascents}
+                highlightedSegmentId={selectedSegmentId}
+                highlightedAscentId={selectedAscentId}
+              />
               <AscentSegmentsList
                 ascents={ascents}
                 originalFileName={fileName}
