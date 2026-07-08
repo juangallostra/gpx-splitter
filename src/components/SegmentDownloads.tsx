@@ -1,62 +1,114 @@
-import { TrackSegment, segmentFileName } from '../domain/trackSegment';
-import { writeGpx, downloadGpx } from '../services/gpxWriter';
+import type { TrackSegment } from '../domain/trackSegment';
+import { downloadGpx, effectiveSegmentFilename, writeGpx } from '../services/gpxWriter';
 import { downloadZip } from '../services/zipExporter';
 
 interface SegmentDownloadsProps {
   segments: TrackSegment[];
   originalFileName?: string;
-  onSelectSegment?: (id: string | null) => void;
-  selectedSegmentId?: string | null;
+  selectedSegmentId?: string;
+  hoveredKm?: number | null;
+  customNames: Record<string, string>;
+  onChangeName: (id: string, name: string) => void;
+  onSelectSegment: (id: string | undefined) => void;
+}
+
+function formatKm(value: number | null): string {
+  if (value === null) {
+    return 'final';
+  }
+
+  return value.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function isKmInsideSegment(segment: TrackSegment, km?: number | null): boolean {
+  if (km === null || km === undefined) return false;
+  const endKm = segment.endKm ?? Number.POSITIVE_INFINITY;
+  return km >= segment.startKm && km <= endKm;
 }
 
 export function SegmentDownloads({
   segments,
   originalFileName,
-  onSelectSegment,
   selectedSegmentId,
+  hoveredKm,
+  customNames,
+  onChangeName,
+  onSelectSegment,
 }: SegmentDownloadsProps) {
-  if (segments.length === 0) return null;
+  async function handleZipDownload() {
+    await downloadZip(segments, originalFileName);
+  }
 
-  const handleDownloadOne = (segment: TrackSegment) => {
-    const gpxContent = writeGpx(segment, originalFileName);
-    downloadGpx(segmentFileName(segment), gpxContent);
-  };
-
-  const handleDownloadAll = () => {
-    downloadZip(segments, originalFileName);
-  };
+  if (segments.length === 0) {
+    return (
+      <section className="card">
+        <p className="eyebrow">Paso 3</p>
+        <h2>Segmentos</h2>
+        <p className="muted">Carga un track para generar segmentos.</p>
+      </section>
+    );
+  }
 
   return (
-    <div className="segment-downloads">
-      <div className="segment-downloads__header">
-        <h3>Segmentos generados ({segments.length})</h3>
-        <button type="button" onClick={handleDownloadAll}>
-          Descargar todo (.zip)
+    <section className="card">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">Paso 3</p>
+          <h2>Segmentos generados</h2>
+          <p className="muted">Edita el nombre visible; también se usará como prefijo del archivo GPX.</p>
+        </div>
+        <button type="button" onClick={handleZipDownload}>
+          Descargar ZIP
         </button>
       </div>
 
-      <ul>
-        {segments.map((segment) => (
-          <li
-            key={segment.id}
-            className={selectedSegmentId === segment.id ? 'segment-downloads__item--active' : ''}
-            onClick={() => onSelectSegment?.(segment.id === selectedSegmentId ? null : segment.id)}
-          >
-            <span>
-              {segmentFileName(segment)} — {segment.points.length} puntos —{' '}
-              {(
-                (segment.points[segment.points.length - 1].distanceFromStart -
-                  segment.points[0].distanceFromStart) /
-                1000
-              ).toFixed(2)}{' '}
-              km
-            </span>
-            <button type="button" onClick={(e) => { e.stopPropagation(); handleDownloadOne(segment); }}>
-              Descargar
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+      <div className="segment-list">
+        {segments.map((segment) => {
+          const isSelected = segment.id === selectedSegmentId;
+          const isHovered = isKmInsideSegment(segment, hoveredKm);
+
+          return (
+            <article
+              className={`segment-item ${isSelected ? 'is-selected' : ''} ${isHovered ? 'is-hovered' : ''}`}
+              key={segment.id}
+            >
+              <div className="segment-item__main">
+                <label className="inline-label">
+                  Nombre
+                  <input
+                    type="text"
+                    value={customNames[segment.id] ?? segment.name}
+                    onChange={(event) => onChangeName(segment.id, event.target.value)}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                </label>
+                <span>
+                  km {formatKm(segment.startKm)} → km {formatKm(segment.endKm)} · {segment.points.length} puntos
+                </span>
+                <span className="muted small-text">Archivo: {effectiveSegmentFilename(segment)}</span>
+              </div>
+              <div className="segment-actions">
+                <button
+                  className="button-secondary"
+                  type="button"
+                  onClick={() => onSelectSegment(isSelected ? undefined : segment.id)}
+                >
+                  {isSelected ? 'Quitar resaltado' : 'Resaltar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadGpx(effectiveSegmentFilename(segment), writeGpx(segment, originalFileName))}
+                >
+                  Descargar GPX
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }

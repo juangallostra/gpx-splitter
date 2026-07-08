@@ -1,27 +1,48 @@
 import {
-  ResponsiveContainer,
-  AreaChart,
   Area,
-  XAxis,
-  YAxis,
+  AreaChart,
   CartesianGrid,
-  Tooltip,
   ReferenceArea,
   ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
-import { TrackPoint } from '../domain/trackPoint';
-import { TrackSegment } from '../domain/trackSegment';
-import { AscentSegment } from '../domain/ascentSegment';
+import type { TrackPoint } from '../domain/trackPoint';
+import type { TrackSegment } from '../domain/trackSegment';
+import type { SlopeSegment } from '../domain/slopeSegment';
 import { buildElevationProfile } from '../services/elevationProfile';
 
 interface ElevationProfileProps {
   points: TrackPoint[];
   cutPointsKm?: number[];
   segments?: TrackSegment[];
-  ascents?: AscentSegment[];
-  highlightedSegmentId?: string | null;
-  highlightedAscentId?: string | null;
+  ascents?: SlopeSegment[];
+  descents?: SlopeSegment[];
+  highlightedSegmentId?: string;
+  highlightedAscentId?: string;
+  highlightedDescentId?: string;
+  hoveredKm?: number | null;
   height?: number;
+  onHoverKm?: (km: number | null) => void;
+  onClickKm?: (km: number) => void;
+}
+
+function toKmLabel(value: number): string {
+  return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function readActiveKm(chartState: unknown): number | null {
+  const state = chartState as { activeLabel?: string | number; activePayload?: Array<{ payload?: { km?: number } }> };
+
+  if (state?.activeLabel !== undefined) {
+    const value = Number(state.activeLabel);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const payloadKm = state?.activePayload?.[0]?.payload?.km;
+  return typeof payloadKm === 'number' ? payloadKm : null;
 }
 
 export function ElevationProfile({
@@ -29,118 +50,109 @@ export function ElevationProfile({
   cutPointsKm = [],
   segments = [],
   ascents = [],
+  descents = [],
   highlightedSegmentId,
   highlightedAscentId,
-  height = 220,
+  highlightedDescentId,
+  hoveredKm,
+  height = 260,
+  onHoverKm,
+  onClickKm,
 }: ElevationProfileProps) {
   const data = buildElevationProfile(points);
 
   if (data.length === 0) {
     return (
-      <div className="elevation-profile">
-        <h3>Perfil de elevación</h3>
-        <p>Este GPX no tiene suficientes datos de elevación para mostrar un perfil.</p>
-      </div>
+      <section className="card profile-card">
+        <p className="eyebrow">Perfil</p>
+        <h2>Perfil de elevación</h2>
+        <p className="muted">Este GPX no tiene suficientes datos de elevación para mostrar un perfil.</p>
+      </section>
     );
   }
 
   return (
-    <div className="elevation-profile">
-      <h3>Perfil de elevación</h3>
-      <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis
-            dataKey="distanceKm"
-            type="number"
-            domain={['dataMin', 'dataMax']}
-            tickFormatter={(v: number) => `${v.toFixed(1)}`}
-            unit=" km"
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis
-            width={50}
-            tickFormatter={(v: number) => `${Math.round(v)}`}
-            unit=" m"
-            tick={{ fontSize: 12 }}
-            domain={['dataMin - 20', 'dataMax + 20']}
-          />
-          <Tooltip
-            formatter={(value) => [`${Math.round(Number(value))} m`, 'Elevación']}
-            labelFormatter={(label) => `Km ${Number(label).toFixed(2)}`}
-          />
+    <section className="card profile-card">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">Perfil</p>
+          <h2>Perfil de elevación</h2>
+          <p className="muted">Mueve el ratón para sincronizar mapa/listas. Haz clic para añadir un corte.</p>
+        </div>
+        {hoveredKm !== null && hoveredKm !== undefined && <span className="pill">Km {toKmLabel(hoveredKm)}</span>}
+      </div>
 
-          {/* Bandas alternas para los segmentos de corte por km */}
-          {segments.map((segment, index) => {
-            const isHighlighted = segment.id === highlightedSegmentId;
-            return (
+      <div style={{ width: '100%', height }} onMouseLeave={() => onHoverKm?.(null)}>
+        <ResponsiveContainer>
+          <AreaChart
+            data={data}
+            margin={{ top: 12, right: 18, left: 0, bottom: 8 }}
+            onMouseMove={(state) => onHoverKm?.(readActiveKm(state))}
+            onClick={(state) => {
+              const km = readActiveKm(state);
+              if (km !== null) onClickKm?.(km);
+            }}
+          >
+            <defs>
+              <linearGradient id="elevationFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="currentColor" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="currentColor" stopOpacity={0.04} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="km" type="number" domain={[data[0].km, data[data.length - 1].km]} tickFormatter={(v) => Number(v).toFixed(1)} unit=" km" />
+            <YAxis tickFormatter={(v) => `${Math.round(Number(v))}`} unit=" m" domain={['dataMin - 20', 'dataMax + 20']} />
+            <Tooltip
+              formatter={(value) => [`${Math.round(Number(value))} m`, 'Elevación']}
+              labelFormatter={(label) => `Km ${toKmLabel(Number(label))}`}
+            />
+
+            {segments.map((segment) => (
               <ReferenceArea
                 key={segment.id}
                 x1={segment.startKm}
-                x2={segment.endKm ?? undefined}
-                fill={isHighlighted ? '#f97316' : index % 2 === 0 ? '#94a3b8' : 'transparent'}
-                fillOpacity={isHighlighted ? 0.25 : 0.08}
-                stroke="none"
+                x2={segment.endKm ?? data[data.length - 1].km}
+                className={segment.id === highlightedSegmentId ? 'profile-area profile-area--segment-active' : 'profile-area profile-area--segment'}
               />
-            );
-          })}
+            ))}
 
-          {/* Bandas para los ascensos detectados */}
-          {ascents.map((ascent) => {
-            const isHighlighted = ascent.id === highlightedAscentId;
-            return (
+            {ascents.map((segment) => (
               <ReferenceArea
-                key={ascent.id}
-                x1={ascent.startKm}
-                x2={ascent.endKm ?? undefined}
-                fill="#16a34a"
-                fillOpacity={isHighlighted ? 0.45 : 0.2}
-                stroke="#16a34a"
-                strokeOpacity={isHighlighted ? 0.8 : 0}
+                key={segment.id}
+                x1={segment.startKm}
+                x2={segment.endKm ?? data[data.length - 1].km}
+                className={segment.id === highlightedAscentId ? 'profile-area profile-area--ascent-active' : 'profile-area profile-area--ascent'}
               />
-            );
-          })}
+            ))}
 
-          {/* Líneas de los puntos kilométricos de corte */}
-          {cutPointsKm.map((km) => (
-            <ReferenceLine key={km} x={km} stroke="#dc2626" strokeDasharray="4 4" />
-          ))}
+            {descents.map((segment) => (
+              <ReferenceArea
+                key={segment.id}
+                x1={segment.startKm}
+                x2={segment.endKm ?? data[data.length - 1].km}
+                className={segment.id === highlightedDescentId ? 'profile-area profile-area--descent-active' : 'profile-area profile-area--descent'}
+              />
+            ))}
 
-          <Area
-            type="monotone"
-            dataKey="ele"
-            stroke="#2563eb"
-            fill="#2563eb"
-            fillOpacity={0.15}
-            strokeWidth={2}
-            isAnimationActive={false}
-            dot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+            {cutPointsKm.map((km) => (
+              <ReferenceLine key={km} x={km} className="profile-line--cut" strokeDasharray="4 4" label={{ value: `${km.toFixed(1)} km`, position: 'top' }} />
+            ))}
 
-      {(segments.length > 0 || ascents.length > 0) && (
-        <div className="elevation-profile__legend">
-          {segments.length > 0 && (
-            <span>
-              <i className="elevation-profile__swatch elevation-profile__swatch--segment" />
-              Tramo seleccionado
-            </span>
-          )}
-          {ascents.length > 0 && (
-            <span>
-              <i className="elevation-profile__swatch elevation-profile__swatch--ascent" />
-              Ascenso detectado
-            </span>
-          )}
-          {cutPointsKm.length > 0 && (
-            <span>
-              <i className="elevation-profile__swatch elevation-profile__swatch--cut" />
-              Punto de corte
-            </span>
-          )}
-        </div>
-      )}
-    </div>
+            {hoveredKm !== null && hoveredKm !== undefined && (
+              <ReferenceLine x={hoveredKm} className="profile-line--hover" strokeDasharray="3 3" />
+            )}
+
+            <Area type="monotone" dataKey="ele" stroke="currentColor" fill="url(#elevationFill)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="profile-legend">
+        <span><i className="legend legend--segment" /> Segmento</span>
+        <span><i className="legend legend--ascent" /> Ascenso</span>
+        <span><i className="legend legend--descent" /> Descenso</span>
+        <span><i className="legend legend--cut" /> Corte</span>
+      </div>
+    </section>
   );
 }
