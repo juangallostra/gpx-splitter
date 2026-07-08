@@ -4,11 +4,20 @@ import { TrackSummary } from './components/TrackSummary';
 import { CutPointsTable } from './components/CutPointsTable';
 import { MapPreview } from './components/MapPreview';
 import { SegmentDownloads } from './components/SegmentDownloads';
+import { AscentDetectionPanel } from './components/AscentDetectionPanel';
+import { AscentSegmentsList } from './components/AscentSegmentsList';
 import { TrackPoint } from './domain/trackPoint';
 import { CutPoint } from './domain/cutPoint';
 import { parseGpx, GpxParseError } from './services/gpxParser';
 import { calculateDistances } from './services/distanceCalculator';
 import { splitTrackByKilometers, TrackSplitError } from './services/trackSplitter';
+import {
+  detectAscents,
+  hasEnoughElevationData,
+  AscentDetectionError,
+  DEFAULT_ASCENT_CONFIG,
+  AscentConfig,
+} from './services/ascentDetector';
 import './styles.css';
 
 export default function App() {
@@ -17,8 +26,12 @@ export default function App() {
   const [cutPoints, setCutPoints] = useState<CutPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+  const [ascentConfig, setAscentConfig] = useState<AscentConfig>(DEFAULT_ASCENT_CONFIG);
+  const [ascentError, setAscentError] = useState<string | null>(null);
+  const [selectedAscentId, setSelectedAscentId] = useState<string | null>(null);
 
   const totalDistanceKm = points.length > 0 ? points[points.length - 1].distanceFromStart / 1000 : 0;
+  const elevationAvailable = useMemo(() => hasEnoughElevationData(points), [points]);
 
   const segments = useMemo(() => {
     if (points.length < 2 || cutPoints.length === 0) return [];
@@ -38,6 +51,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, cutPoints]);
 
+  const ascents = useMemo(() => {
+    if (points.length < 2 || !elevationAvailable) return [];
+    try {
+      const result = detectAscents(points, ascentConfig);
+      setAscentError(null);
+      return result;
+    } catch (e) {
+      if (e instanceof AscentDetectionError) {
+        setAscentError(e.message);
+      }
+      return [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points, ascentConfig, elevationAvailable]);
+
   const handleFileLoaded = (name: string, content: string) => {
     try {
       const rawPoints = parseGpx(content);
@@ -46,7 +74,9 @@ export default function App() {
       setPoints(withDistances);
       setCutPoints([]);
       setSelectedSegmentId(null);
+      setSelectedAscentId(null);
       setError(null);
+      setAscentError(null);
     } catch (e) {
       if (e instanceof GpxParseError) {
         setError(e.message);
@@ -84,6 +114,8 @@ export default function App() {
             cutPoints={cutPoints}
             segments={segments}
             highlightedSegmentId={selectedSegmentId}
+            ascents={ascents}
+            highlightedAscentId={selectedAscentId}
           />
 
           <SegmentDownloads
@@ -92,6 +124,27 @@ export default function App() {
             selectedSegmentId={selectedSegmentId}
             onSelectSegment={setSelectedSegmentId}
           />
+
+          {elevationAvailable ? (
+            <>
+              <AscentDetectionPanel config={ascentConfig} onChange={setAscentConfig} />
+              {ascentError && <p className="app__error">{ascentError}</p>}
+              <AscentSegmentsList
+                ascents={ascents}
+                originalFileName={fileName}
+                selectedAscentId={selectedAscentId}
+                onSelectAscent={setSelectedAscentId}
+              />
+            </>
+          ) : (
+            <div className="ascent-list">
+              <h3>Detección de tramos de ascenso</h3>
+              <p>
+                Este GPX no tiene suficientes datos de elevación (&lt;ele&gt;) como para detectar
+                tramos de ascenso.
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -135,3 +135,100 @@ button:hover {
   border-color: #f97316;
   background: #fff7ed;
 }
+
+.ascent-panel,
+.ascent-list {
+  margin: 24px 0;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ascent-panel__main {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ascent-panel__main label,
+.ascent-panel__advanced label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  gap: 4px;
+}
+
+.ascent-panel__main input,
+.ascent-panel__advanced input {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 400;
+  width: 140px;
+}
+
+.ascent-panel__toggle {
+  background: transparent;
+  color: #2563eb;
+  border: none;
+  padding: 8px 0;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.ascent-panel__toggle:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.ascent-panel__advanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 8px;
+}
+
+.ascent-list__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ascent-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.ascent-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #16a34a;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.ascent-list li:hover {
+  background: #f1f5f9;
+}
+
+.ascent-list__item--active {
+  background: #f0fdf4;
+  border-color: #16a34a;
+}
+
+.ascent-list__info {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: 14px;
+}
