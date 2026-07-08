@@ -6,6 +6,7 @@ import { MapPreview } from './components/MapPreview';
 import { SegmentDownloads } from './components/SegmentDownloads';
 import { AscentDetectionPanel } from './components/AscentDetectionPanel';
 import { AscentSegmentsList } from './components/AscentSegmentsList';
+import { ElevationProfile } from './components/ElevationProfile';
 import { TrackPoint } from './domain/trackPoint';
 import { CutPoint } from './domain/cutPoint';
 import { parseGpx, GpxParseError } from './services/gpxParser';
@@ -129,6 +130,14 @@ export default function App() {
             <>
               <AscentDetectionPanel config={ascentConfig} onChange={setAscentConfig} />
               {ascentError && <p className="app__error">{ascentError}</p>}
+              <ElevationProfile
+                points={points}
+                cutPointsKm={cutPoints.map((cp) => cp.km)}
+                segments={segments}
+                ascents={ascents}
+                highlightedSegmentId={selectedSegmentId}
+                highlightedAscentId={selectedAscentId}
+              />
               <AscentSegmentsList
                 ascents={ascents}
                 originalFileName={fileName}
