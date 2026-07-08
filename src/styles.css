@@ -232,3 +232,46 @@ button:hover {
   align-items: baseline;
   font-size: 14px;
 }
+
+.elevation-profile {
+  margin: 24px 0;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.elevation-profile__legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.elevation-profile__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.elevation-profile__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  font-style: normal;
+}
+
+.elevation-profile__swatch--segment {
+  background: #f97316;
+}
+
+.elevation-profile__swatch--ascent {
+  background: #16a34a;
+}
+
+.elevation-profile__swatch--cut {
+  background: #dc2626;
+}

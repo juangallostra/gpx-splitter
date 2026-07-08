@@ -6,6 +6,7 @@ import { MapPreview } from './components/MapPreview';
 import { SegmentDownloads } from './components/SegmentDownloads';
 import { AscentDetectionPanel } from './components/AscentDetectionPanel';
 import { AscentSegmentsList } from './components/AscentSegmentsList';
+import { ElevationProfile } from './components/ElevationProfile';
 import { TrackPoint } from './domain/trackPoint';
 import { CutPoint } from './domain/cutPoint';
 import { parseGpx, GpxParseError } from './services/gpxParser';
@@ -102,6 +103,15 @@ export default function App() {
       {points.length > 0 && fileName && (
         <>
           <TrackSummary fileName={fileName} points={points} />
+
+          <ElevationProfile
+            points={points}
+            cutPointsKm={cutPoints.map((cp) => cp.km)}
+            segments={segments}
+            ascents={ascents}
+            highlightedSegmentId={selectedSegmentId}
+            highlightedAscentId={selectedAscentId}
+          />
 
           <CutPointsTable
             cutPoints={cutPoints}
