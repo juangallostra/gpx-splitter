@@ -3,15 +3,25 @@ import { LatLngExpression } from 'leaflet';
 import { TrackPoint } from '../domain/trackPoint';
 import { CutPoint } from '../domain/cutPoint';
 import { TrackSegment } from '../domain/trackSegment';
+import { AscentSegment } from '../domain/ascentSegment';
 
 interface MapPreviewProps {
   points: TrackPoint[];
   cutPoints: CutPoint[];
   segments?: TrackSegment[];
   highlightedSegmentId?: string | null;
+  ascents?: AscentSegment[];
+  highlightedAscentId?: string | null;
 }
 
-export function MapPreview({ points, cutPoints, segments, highlightedSegmentId }: MapPreviewProps) {
+export function MapPreview({
+  points,
+  cutPoints,
+  segments,
+  highlightedSegmentId,
+  ascents,
+  highlightedAscentId,
+}: MapPreviewProps) {
   if (points.length === 0) return null;
 
   const positions: LatLngExpression[] = points.map((p) => [p.lat, p.lon]);
@@ -50,6 +60,27 @@ export function MapPreview({ points, cutPoints, segments, highlightedSegmentId }
               positions={segPositions}
               pathOptions={{ color: '#f97316', weight: 6 }}
             />
+          );
+        })}
+
+        {ascents?.map((ascent) => {
+          const ascentPositions: LatLngExpression[] = ascent.points.map((p) => [p.lat, p.lon]);
+          const isSelected = ascent.id === highlightedAscentId;
+          return (
+            <Polyline
+              key={ascent.id}
+              positions={ascentPositions}
+              pathOptions={{
+                color: '#16a34a',
+                weight: isSelected ? 8 : 5,
+                opacity: isSelected ? 1 : 0.85,
+              }}
+            >
+              <Tooltip sticky>
+                {ascent.name} — {(ascent.distanceMeters / 1000).toFixed(2)} km — +
+                {Math.round(ascent.elevationGainMeters)} m
+              </Tooltip>
+            </Polyline>
           );
         })}
 

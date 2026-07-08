@@ -43,6 +43,39 @@ La lógica de cálculo (services/ y domain/) está desacoplada de React y se pue
 4. La app genera automáticamente los segmentos, interpolando los puntos de corte que no coinciden exactamente con un punto real del GPX.
 5. Descargar cada segmento individualmente o todos juntos en un `.zip`.
 
+## Detección de tramos de ascenso
+
+Además de cortar el track por puntos kilométricos, la app detecta automáticamente los tramos
+de ascenso "significativos" a partir de la elevación del GPX.
+
+Criterios de detección (`src/services/ascentDetector.ts`):
+
+1. La pendiente media en una ventana deslizante (`windowMeters`) supera un umbral (`minSlope`).
+2. Los tramos candidatos separados por un hueco corto (`mergeGapMeters`) se fusionan en uno.
+3. Se descartan como ruido los tramos que no llegan a una distancia (`minAscentDistanceM`) o
+   desnivel (`minAscentGainM`) mínimos.
+4. El inicio real del ascenso se ajusta retrocediendo hasta el último punto bajo (mínimo local)
+   antes de que empiece a subir.
+5. Finalmente se filtran los ascensos según los umbrales del usuario: km mínimos y desnivel
+   positivo mínimo.
+
+Valores por defecto (configurables en el panel "Opciones avanzadas" de la UI):
+
+```ts
+minSlope = 0.03        // 3%
+windowMeters = 150
+minAscentDistanceM = 300
+minAscentGainM = 20
+mergeGapMeters = 100
+```
+
+Los ascensos detectados se muestran siempre superpuestos en el mapa (línea verde), en una
+lista con sus métricas (distancia, desnivel, pendiente media) y se pueden descargar como GPX
+individual o en ZIP, igual que los segmentos de corte por km.
+
+Si el GPX no tiene suficientes datos de elevación (`<ele>`), esta funcionalidad se desactiva
+y se muestra un aviso.
+
 ## Notas del MVP
 
 - No hay backend, base de datos ni autenticación.
