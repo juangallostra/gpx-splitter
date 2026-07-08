@@ -1,72 +1,65 @@
-import { TrackPoint } from '../domain/trackPoint';
+import type { ElevationStats, TrackPoint } from '../domain/trackPoint';
 
-const EARTH_RADIUS_M = 6371000;
+const EARTH_RADIUS_METERS = 6_371_000;
 
-function toRad(deg: number): number {
-  return (deg * Math.PI) / 180;
+function toRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
 }
 
-/**
- * Distancia en metros entre dos coordenadas usando la fórmula de Haversine.
- */
-export function haversineDistance(
-  a: { lat: number; lon: number },
-  b: { lat: number; lon: number }
-): number {
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
+export function calculateDistanceMeters(pointA: TrackPoint, pointB: TrackPoint): number {
+  const lat1 = toRadians(pointA.lat);
+  const lat2 = toRadians(pointB.lat);
+  const deltaLat = toRadians(pointB.lat - pointA.lat);
+  const deltaLon = toRadians(pointB.lon - pointA.lon);
 
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
 
-  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-  return EARTH_RADIUS_M * c;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_METERS * c;
 }
 
-/**
- * Devuelve una nueva lista de puntos con distanceFromStart calculada (en metros).
- */
 export function calculateDistances(points: TrackPoint[]): TrackPoint[] {
-  if (points.length === 0) return [];
-
-  const result: TrackPoint[] = [{ ...points[0], distanceFromStart: 0 }];
-
-  for (let i = 1; i < points.length; i++) {
-    const prev = result[i - 1];
-    const curr = points[i];
-    const segmentDistance = haversineDistance(prev, curr);
-    result.push({
-      ...curr,
-      distanceFromStart: prev.distanceFromStart + segmentDistance,
-    });
+  if (points.length === 0) {
+    return [];
   }
 
-  return result;
+  let accumulatedDistance = 0;
+
+  return points.map((point, index) => {
+    if (index > 0) {
+      accumulatedDistance += calculateDistanceMeters(points[index - 1], point);
+    }
+
+    return {
+      ...point,
+      distanceFromStart: accumulatedDistance,
+    };
+  });
 }
 
-export interface ElevationSummary {
-  gainM: number;
-  lossM: number;
-}
+export function calculateElevationStats(points: TrackPoint[]): ElevationStats {
+  return points.reduce<ElevationStats>(
+    (stats, currentPoint, index) => {
+      if (index === 0) {
+        return stats;
+      }
 
-/**
- * Calcula el desnivel positivo y negativo acumulado. Ignora puntos sin elevación.
- */
-export function calculateElevation(points: TrackPoint[]): ElevationSummary | null {
-  const withEle = points.filter((p) => p.ele !== undefined) as (TrackPoint & { ele: number })[];
-  if (withEle.length < 2) return null;
+      const previousPoint = points[index - 1];
+      if (previousPoint.ele === undefined || currentPoint.ele === undefined) {
+        return stats;
+      }
 
-  let gain = 0;
-  let loss = 0;
+      const delta = currentPoint.ele - previousPoint.ele;
+      if (delta > 0) {
+        stats.positive += delta;
+      } else if (delta < 0) {
+        stats.negative += Math.abs(delta);
+      }
 
-  for (let i = 1; i < withEle.length; i++) {
-    const diff = withEle[i].ele - withEle[i - 1].ele;
-    if (diff > 0) gain += diff;
-    else loss += Math.abs(diff);
-  }
-
-  return { gainM: gain, lossM: loss };
+      return stats;
+    },
+    { positive: 0, negative: 0 },
+  );
 }

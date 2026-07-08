@@ -1,35 +1,47 @@
-import { TrackPoint } from '../domain/trackPoint';
+import type { TrackPoint } from '../domain/trackPoint';
 
 export interface ElevationProfilePoint {
-  distanceKm: number;
+  km: number;
   ele: number;
+  lat: number;
+  lon: number;
 }
 
-/**
- * Convierte los puntos del track en una serie (distanciaKm, elevación) apta para un gráfico,
- * ignorando puntos sin elevación y reduciendo la cantidad de puntos si el track es muy largo
- * (para mantener el gráfico fluido sin perder la forma del perfil).
- */
-export function buildElevationProfile(
-  points: TrackPoint[],
-  maxPoints = 400
-): ElevationProfilePoint[] {
-  const withEle = points.filter((p) => p.ele !== undefined) as (TrackPoint & { ele: number })[];
-  if (withEle.length < 2) return [];
+export function buildElevationProfile(points: TrackPoint[], maxPoints = 500): ElevationProfilePoint[] {
+  const withElevation = points.filter((point) => point.ele !== undefined);
 
-  const step = Math.max(1, Math.ceil(withEle.length / maxPoints));
-
-  const sampled: ElevationProfilePoint[] = [];
-  for (let i = 0; i < withEle.length; i += step) {
-    sampled.push({ distanceKm: withEle[i].distanceFromStart / 1000, ele: withEle[i].ele });
+  if (withElevation.length < 2) {
+    return [];
   }
 
-  // Aseguramos que el último punto real siempre esté presente, para no cortar el perfil
-  const last = withEle[withEle.length - 1];
-  const lastSampled = sampled[sampled.length - 1];
-  if (lastSampled.distanceKm !== last.distanceFromStart / 1000) {
-    sampled.push({ distanceKm: last.distanceFromStart / 1000, ele: last.ele });
+  const step = Math.max(1, Math.ceil(withElevation.length / maxPoints));
+  const sampled = withElevation.filter((_, index) => index % step === 0);
+  const last = withElevation[withElevation.length - 1];
+
+  if (sampled[sampled.length - 1] !== last) {
+    sampled.push(last);
   }
 
-  return sampled;
+  return sampled.map((point) => ({
+    km: point.distanceFromStart / 1000,
+    ele: point.ele!,
+    lat: point.lat,
+    lon: point.lon,
+  }));
+}
+
+export function findProfilePointByKm(points: TrackPoint[], km: number): TrackPoint | undefined {
+  const targetMeters = km * 1000;
+  let closest = points[0];
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (const point of points) {
+    const delta = Math.abs(point.distanceFromStart - targetMeters);
+    if (delta < closestDistance) {
+      closest = point;
+      closestDistance = delta;
+    }
+  }
+
+  return closest;
 }

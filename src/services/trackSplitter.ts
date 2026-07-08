@@ -1,127 +1,144 @@
-import { TrackPoint } from '../domain/trackPoint';
-import { TrackSegment } from '../domain/trackSegment';
+import type { TrackPoint } from '../domain/trackPoint';
+import type { TrackSegment } from '../domain/trackSegment';
+import { buildRangeFilename, rangeId } from './idUtils';
+
+function clonePointWithDistance(point: TrackPoint, distanceFromStart: number): TrackPoint {
+  return {
+    ...point,
+    distanceFromStart,
+  };
+}
+
+function interpolateIsoTime(timeA: string, timeB: string, ratio: number): string | undefined {
+  const timestampA = Date.parse(timeA);
+  const timestampB = Date.parse(timeB);
+
+  if (!Number.isFinite(timestampA) || !Number.isFinite(timestampB)) {
+    return undefined;
+  }
+
+  const interpolatedTimestamp = timestampA + (timestampB - timestampA) * ratio;
+  return new Date(interpolatedTimestamp).toISOString();
+}
 
 export class TrackSplitError extends Error {}
 
-/**
- * Interpola un punto entre A y B a una distancia objetivo (en metros desde el inicio del track).
- * Requiere que targetDistance esté entre pointA.distanceFromStart y pointB.distanceFromStart.
- */
 export function interpolatePoint(
   pointA: TrackPoint,
   pointB: TrackPoint,
-  targetDistance: number
+  targetDistance: number,
 ): TrackPoint {
-  const total = pointB.distanceFromStart - pointA.distanceFromStart;
+  const segmentDistance = pointB.distanceFromStart - pointA.distanceFromStart;
 
-  // Si los puntos coinciden en distancia, devolvemos A tal cual (evita división por 0)
-  const ratio = total === 0 ? 0 : (targetDistance - pointA.distanceFromStart) / total;
-  const clampedRatio = Math.min(1, Math.max(0, ratio));
-
-  const lat = pointA.lat + (pointB.lat - pointA.lat) * clampedRatio;
-  const lon = pointA.lon + (pointB.lon - pointA.lon) * clampedRatio;
-
-  let ele: number | undefined;
-  if (pointA.ele !== undefined && pointB.ele !== undefined) {
-    ele = pointA.ele + (pointB.ele - pointA.ele) * clampedRatio;
+  if (segmentDistance <= 0) {
+    return clonePointWithDistance(pointA, targetDistance);
   }
 
-  let time: string | undefined;
-  if (pointA.time && pointB.time) {
-    const tA = new Date(pointA.time).getTime();
-    const tB = new Date(pointB.time).getTime();
-    if (!Number.isNaN(tA) && !Number.isNaN(tB)) {
-      const interpolatedTime = tA + (tB - tA) * clampedRatio;
-      time = new Date(interpolatedTime).toISOString();
-    }
-  }
+  const ratio = (targetDistance - pointA.distanceFromStart) / segmentDistance;
+  const hasElevation = pointA.ele !== undefined && pointB.ele !== undefined;
+  const hasTime = pointA.time !== undefined && pointB.time !== undefined;
 
   return {
-    lat,
-    lon,
-    ele,
-    time,
+    lat: pointA.lat + (pointB.lat - pointA.lat) * ratio,
+    lon: pointA.lon + (pointB.lon - pointA.lon) * ratio,
+    ele: hasElevation ? pointA.ele! + (pointB.ele! - pointA.ele!) * ratio : undefined,
+    time: hasTime ? interpolateIsoTime(pointA.time!, pointB.time!, ratio) : undefined,
     distanceFromStart: targetDistance,
   };
 }
 
-/**
- * Divide el track en segmentos según los puntos kilométricos indicados (en km).
- * Los cutKms deben venir ya validados, ordenados y sin duplicados.
- */
-export function splitTrackByKilometers(
-  points: TrackPoint[],
-  cutKms: number[]
-): TrackSegment[] {
-  if (points.length < 2) {
-    throw new TrackSplitError('El track necesita al menos 2 puntos para poder cortarse.');
+export function getPointAtDistance(points: TrackPoint[], targetDistance: number): TrackPoint {
+  if (points.length === 0) {
+    throw new TrackSplitError('No hay puntos de track para interpolar.');
   }
 
-  const totalDistanceM = points[points.length - 1].distanceFromStart;
-  const totalDistanceKm = totalDistanceM / 1000;
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
 
-  const invalidCut = cutKms.find((km) => km <= 0 || km >= totalDistanceKm);
-  if (invalidCut !== undefined) {
-    throw new TrackSplitError(
-      `El punto kilométrico ${invalidCut} está fuera de rango (0 - ${totalDistanceKm.toFixed(2)} km).`
-    );
+  if (targetDistance <= firstPoint.distanceFromStart) {
+    return clonePointWithDistance(firstPoint, targetDistance);
   }
 
-  // Límites del recorrido en metros: 0, corte1, corte2, ..., final
-  const boundariesM = [0, ...cutKms.map((km) => km * 1000), totalDistanceM];
+  if (targetDistance >= lastPoint.distanceFromStart) {
+    return clonePointWithDistance(lastPoint, targetDistance);
+  }
 
-  const segments: TrackSegment[] = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const previousPoint = points[index - 1];
+    const currentPoint = points[index];
 
-  for (let i = 0; i < boundariesM.length - 1; i++) {
-    const startM = boundariesM[i];
-    const endM = boundariesM[i + 1];
-
-    const segmentPoints: TrackPoint[] = [];
-
-    // Punto inicial: exacto si coincide con un punto real, si no se interpola
-    segmentPoints.push(getPointAtDistance(points, startM));
-
-    // Puntos interiores estrictamente entre startM y endM
-    for (const p of points) {
-      if (p.distanceFromStart > startM && p.distanceFromStart < endM) {
-        segmentPoints.push(p);
-      }
+    if (Math.abs(previousPoint.distanceFromStart - targetDistance) < 0.0001) {
+      return clonePointWithDistance(previousPoint, targetDistance);
     }
 
-    // Punto final
-    segmentPoints.push(getPointAtDistance(points, endM));
+    if (Math.abs(currentPoint.distanceFromStart - targetDistance) < 0.0001) {
+      return clonePointWithDistance(currentPoint, targetDistance);
+    }
 
-    const isLast = i === boundariesM.length - 2;
-
-    segments.push({
-      id: crypto.randomUUID(),
-      name: `Segmento ${i + 1}`,
-      startKm: startM / 1000,
-      endKm: isLast ? null : endM / 1000,
-      points: segmentPoints,
-    });
+    if (previousPoint.distanceFromStart < targetDistance && currentPoint.distanceFromStart > targetDistance) {
+      return interpolatePoint(previousPoint, currentPoint, targetDistance);
+    }
   }
 
-  return segments;
+  return clonePointWithDistance(lastPoint, targetDistance);
 }
 
-/**
- * Devuelve el punto del track en una distancia dada (en metros), interpolando si hace falta.
- */
-function getPointAtDistance(points: TrackPoint[], targetDistanceM: number): TrackPoint {
-  // Punto exacto (con tolerancia mínima de 1cm)
-  const exact = points.find((p) => Math.abs(p.distanceFromStart - targetDistanceM) < 0.01);
-  if (exact) return exact;
+export function getClosestPoint(points: TrackPoint[], target: { lat: number; lon: number }): TrackPoint | undefined {
+  if (points.length === 0) return undefined;
 
-  // Buscar el par de puntos entre los que cae targetDistanceM
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (a.distanceFromStart <= targetDistanceM && targetDistanceM <= b.distanceFromStart) {
-      return interpolatePoint(a, b, targetDistanceM);
+  let best = points[0];
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const point of points) {
+    const latDelta = point.lat - target.lat;
+    const lonDelta = point.lon - target.lon;
+    const score = latDelta * latDelta + lonDelta * lonDelta;
+
+    if (score < bestScore) {
+      bestScore = score;
+      best = point;
     }
   }
 
-  // Caso límite: fuera de rango por redondeo, devolvemos el extremo más cercano
-  return targetDistanceM <= 0 ? points[0] : points[points.length - 1];
+  return best;
+}
+
+export function normalizeCutKms(cutKms: number[], totalKm: number): number[] {
+  const sorted = [...cutKms]
+    .filter((km) => Number.isFinite(km) && km > 0 && km < totalKm)
+    .sort((a, b) => a - b);
+
+  return sorted.filter((km, index) => index === 0 || Math.abs(km - sorted[index - 1]) > 0.001);
+}
+
+export function splitTrackByKilometers(points: TrackPoint[], cutKms: number[]): TrackSegment[] {
+  if (points.length < 2) {
+    throw new TrackSplitError('El track necesita al menos dos puntos para poder cortarse.');
+  }
+
+  const totalDistanceMeters = points[points.length - 1].distanceFromStart;
+  const totalKm = totalDistanceMeters / 1000;
+  const normalizedCuts = normalizeCutKms(cutKms, totalKm);
+  const boundariesMeters = [0, ...normalizedCuts.map((km) => km * 1000), totalDistanceMeters];
+
+  return boundariesMeters.slice(0, -1).map((startMeters, index): TrackSegment => {
+    const endMeters = boundariesMeters[index + 1];
+    const startPoint = getPointAtDistance(points, startMeters);
+    const endPoint = getPointAtDistance(points, endMeters);
+    const innerPoints = points.filter(
+      (point) => point.distanceFromStart > startMeters && point.distanceFromStart < endMeters,
+    );
+    const startKm = startMeters / 1000;
+    const isLastSegment = index === boundariesMeters.length - 2;
+    const endKm = isLastSegment ? null : endMeters / 1000;
+
+    return {
+      id: rangeId('seg', startKm, endKm),
+      name: `Segmento ${index + 1}`,
+      filename: buildRangeFilename('track', startKm, endKm),
+      startKm,
+      endKm,
+      points: [startPoint, ...innerPoints, endPoint],
+    };
+  });
 }

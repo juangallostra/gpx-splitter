@@ -1,62 +1,45 @@
-import { TrackPoint } from '../domain/trackPoint';
+import type { TrackPoint } from '../domain/trackPoint';
 
-export class GpxParseError extends Error {}
+const GPX_PARSE_ERROR = 'El archivo no parece ser un GPX válido.';
 
-/**
- * Parsea el contenido XML de un archivo GPX y extrae los puntos de track (trkpt).
- * No calcula distancias: eso lo hace distanceCalculator.
- */
+function getDirectChildText(element: Element, tagName: string): string | undefined {
+  const children = Array.from(element.children);
+  const child = children.find((item) => item.localName.toLowerCase() === tagName.toLowerCase());
+  return child?.textContent?.trim() || undefined;
+}
+
 export function parseGpx(xml: string): TrackPoint[] {
-  let doc: Document;
-  try {
-    const parser = new DOMParser();
-    doc = parser.parseFromString(xml, 'application/xml');
-  } catch {
-    throw new GpxParseError('El archivo no se pudo interpretar como XML.');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+  const parserError = doc.querySelector('parsererror');
+
+  if (parserError) {
+    throw new Error(GPX_PARSE_ERROR);
   }
 
-  const parseError = doc.querySelector('parsererror');
-  if (parseError) {
-    throw new GpxParseError('El archivo no es un XML válido.');
+  const trkptElements = Array.from(doc.getElementsByTagNameNS('*', 'trkpt'));
+
+  if (trkptElements.length === 0) {
+    throw new Error('El GPX no contiene puntos de track (<trkpt>).');
   }
 
-  const isGpx = doc.documentElement?.nodeName.toLowerCase() === 'gpx';
-  if (!isGpx) {
-    throw new GpxParseError('El archivo no parece ser un GPX válido (falta la etiqueta <gpx>).');
-  }
+  const points = trkptElements.map((trkpt, index): TrackPoint => {
+    const lat = Number(trkpt.getAttribute('lat'));
+    const lon = Number(trkpt.getAttribute('lon'));
 
-  const trkptNodes = Array.from(doc.getElementsByTagName('trkpt'));
-
-  if (trkptNodes.length === 0) {
-    throw new GpxParseError('El GPX no contiene puntos de track (<trkpt>).');
-  }
-
-  const points: TrackPoint[] = trkptNodes.map((node, index) => {
-    const latAttr = node.getAttribute('lat');
-    const lonAttr = node.getAttribute('lon');
-
-    if (latAttr === null || lonAttr === null) {
-      throw new GpxParseError(`El punto ${index + 1} no tiene latitud/longitud.`);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      throw new Error(`El punto ${index + 1} no tiene latitud o longitud válida.`);
     }
 
-    const lat = parseFloat(latAttr);
-    const lon = parseFloat(lonAttr);
-
-    if (Number.isNaN(lat) || Number.isNaN(lon)) {
-      throw new GpxParseError(`El punto ${index + 1} tiene coordenadas inválidas.`);
-    }
-
-    const eleNode = node.getElementsByTagName('ele')[0];
-    const timeNode = node.getElementsByTagName('time')[0];
-
-    const ele = eleNode ? parseFloat(eleNode.textContent ?? '') : undefined;
-    const time = timeNode?.textContent ?? undefined;
+    const eleText = getDirectChildText(trkpt, 'ele');
+    const timeText = getDirectChildText(trkpt, 'time');
+    const ele = eleText !== undefined ? Number(eleText) : undefined;
 
     return {
       lat,
       lon,
-      ele: ele !== undefined && !Number.isNaN(ele) ? ele : undefined,
-      time,
+      ele: ele !== undefined && Number.isFinite(ele) ? ele : undefined,
+      time: timeText,
       distanceFromStart: 0,
     };
   });
