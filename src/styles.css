@@ -1,0 +1,137 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+header h1 {
+  margin-bottom: 4px;
+}
+
+header p {
+  color: #475569;
+  margin-top: 0;
+}
+
+.app__error,
+.cut-points-table__error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.gpx-uploader {
+  margin: 16px 0;
+  padding: 20px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.gpx-uploader__label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.track-summary,
+.cut-points-table,
+.map-preview,
+.segment-downloads {
+  margin: 24px 0;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.track-summary ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.cut-points-table__add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cut-points-table__add input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+button {
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: white;
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.segment-downloads__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.segment-downloads ul {
+  list-style: none;
+  padding: 0;
+}
+
+.segment-downloads li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.segment-downloads li:hover {
+  background: #f1f5f9;
+}
+
+.segment-downloads__item--active {
+  border-color: #f97316;
+  background: #fff7ed;
+}
