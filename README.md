@@ -76,6 +76,44 @@ individual o en ZIP, igual que los segmentos de corte por km.
 Si el GPX no tiene suficientes datos de elevación (`<ele>`), esta funcionalidad se desactiva
 y se muestra un aviso.
 
+## Ids estables y nombres personalizados
+
+Los segmentos de corte, ascensos y descensos usan un id determinista derivado de su rango de km
+(`stableSegmentId` en `domain/trackSegment.ts`), no un UUID aleatorio. Esto permite que un nombre
+personalizado (editable con el lápiz ✏️ en cada lista) sobreviva a los recálculos automáticos
+mientras el tramo no cambie de límites. El nombre personalizado se aplica también al `<name>`
+del GPX exportado.
+
+## Sincronización mapa ↔ perfil ↔ listas
+
+Al mover el ratón sobre el mapa o sobre el perfil de elevación, se calcula el km más cercano
+(`services/trackGeometry.ts`) y se muestra una marca sincronizada en el otro: un círculo en el
+mapa y una línea vertical en el perfil. La capa de interacción del mapa es una polilínea
+invisible más gruesa superpuesta a las demás, para que el hover funcione igual de bien encima
+de las bandas de ascenso/descenso que sobre el track base.
+
+## Añadir puntos de corte con clic
+
+Haciendo clic directamente sobre el mapa o sobre el perfil de elevación se añade un punto de
+corte en el km correspondiente (reutilizando la misma validación que la tabla manual). Aparece
+un aviso con un botón "Deshacer" para revertir el último corte añadido así.
+
+## Detección de descensos
+
+Análoga a la detección de ascensos pero con parámetros de configuración independientes
+(`services/descentDetector.ts`). Internamente ambas comparten el mismo motor genérico
+(`services/slopeDetector.ts`, parametrizado por `direction: 'up' | 'down'`), que también ajusta
+el inicio real del tramo de forma simétrica (mínimo local antes de un ascenso, máximo local
+antes de un descenso).
+
+## Categorización de puertos
+
+Los ascensos detectados se clasifican de forma orientativa (badge de color) usando
+`distancia_km × pendiente_media_%` contra unos umbrales inspirados en las categorías ciclistas
+habituales (3ª, 2ª, 1ª, Especial/HC). No es un estándar oficial —cada organizador usa sus
+propios criterios— así que es solo una referencia aproximada (`categorizeClimb` en
+`services/slopeDetector.ts`).
+
 ## Perfil de elevación
 
 Debajo del resumen del track se muestra un gráfico de área (distancia vs. elevación,
