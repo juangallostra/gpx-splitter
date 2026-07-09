@@ -393,6 +393,10 @@ button:hover {
   font-style: normal;
 }
 
+.elevation-profile__swatch--track {
+  background: #1e293b;
+}
+
 .elevation-profile__swatch--segment {
   background: #f97316;
 }
