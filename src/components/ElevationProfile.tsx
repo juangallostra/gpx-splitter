@@ -11,17 +11,27 @@ import {
 } from 'recharts';
 import { TrackPoint } from '../domain/trackPoint';
 import { TrackSegment } from '../domain/trackSegment';
-import { AscentSegment } from '../domain/ascentSegment';
+import { SlopeSegment } from '../domain/slopeSegment';
 import { buildElevationProfile } from '../services/elevationProfile';
 
 interface ElevationProfileProps {
   points: TrackPoint[];
   cutPointsKm?: number[];
   segments?: TrackSegment[];
-  ascents?: AscentSegment[];
+  ascents?: SlopeSegment[];
+  descents?: SlopeSegment[];
   highlightedSegmentId?: string | null;
   highlightedAscentId?: string | null;
+  highlightedDescentId?: string | null;
+  hoveredKm?: number | null;
+  onHoverKm?: (km: number | null) => void;
+  onAddCutPoint?: (km: number) => void;
   height?: number;
+}
+
+// Forma mínima de lo que recharts pasa a onMouseMove/onClick para un AreaChart tipo "number"
+interface ChartMouseState {
+  activeLabel?: number | string;
 }
 
 export function ElevationProfile({
@@ -29,8 +39,13 @@ export function ElevationProfile({
   cutPointsKm = [],
   segments = [],
   ascents = [],
+  descents = [],
   highlightedSegmentId,
   highlightedAscentId,
+  highlightedDescentId,
+  hoveredKm,
+  onHoverKm,
+  onAddCutPoint,
   height = 220,
 }: ElevationProfileProps) {
   const data = buildElevationProfile(points);
@@ -44,11 +59,39 @@ export function ElevationProfile({
     );
   }
 
+  const extractKm = (state: ChartMouseState): number | null => {
+    if (state.activeLabel === undefined) return null;
+    const km = Number(state.activeLabel);
+    return Number.isNaN(km) ? null : km;
+  };
+
+  const handleMove = (state: ChartMouseState) => {
+    if (!onHoverKm) return;
+    onHoverKm(extractKm(state));
+  };
+
+  const handleLeave = () => {
+    onHoverKm?.(null);
+  };
+
+  const handleClick = (state: ChartMouseState) => {
+    if (!onAddCutPoint) return;
+    const km = extractKm(state);
+    if (km !== null) onAddCutPoint(km);
+  };
+
   return (
     <div className="elevation-profile">
       <h3>Perfil de elevación</h3>
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
+          onMouseMove={handleMove}
+          onMouseLeave={handleLeave}
+          onClick={handleClick}
+          style={{ cursor: onAddCutPoint ? 'crosshair' : undefined }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis
             dataKey="distanceKm"
@@ -101,10 +144,29 @@ export function ElevationProfile({
             );
           })}
 
+          {/* Bandas para los descensos detectados */}
+          {descents.map((descent) => {
+            const isHighlighted = descent.id === highlightedDescentId;
+            return (
+              <ReferenceArea
+                key={descent.id}
+                x1={descent.startKm}
+                x2={descent.endKm ?? undefined}
+                fill="#7c3aed"
+                fillOpacity={isHighlighted ? 0.45 : 0.2}
+                stroke="#7c3aed"
+                strokeOpacity={isHighlighted ? 0.8 : 0}
+              />
+            );
+          })}
+
           {/* Líneas de los puntos kilométricos de corte */}
           {cutPointsKm.map((km) => (
             <ReferenceLine key={km} x={km} stroke="#dc2626" strokeDasharray="4 4" />
           ))}
+
+          {/* Línea de sincronización con el hover del mapa */}
+          {hoveredKm != null && <ReferenceLine x={hoveredKm} stroke="#0f172a" strokeWidth={1.5} />}
 
           <Area
             type="monotone"
@@ -119,7 +181,7 @@ export function ElevationProfile({
         </AreaChart>
       </ResponsiveContainer>
 
-      {(segments.length > 0 || ascents.length > 0) && (
+      {(segments.length > 0 || ascents.length > 0 || descents.length > 0) && (
         <div className="elevation-profile__legend">
           {segments.length > 0 && (
             <span>
@@ -133,6 +195,12 @@ export function ElevationProfile({
               Ascenso detectado
             </span>
           )}
+          {descents.length > 0 && (
+            <span>
+              <i className="elevation-profile__swatch elevation-profile__swatch--descent" />
+              Descenso detectado
+            </span>
+          )}
           {cutPointsKm.length > 0 && (
             <span>
               <i className="elevation-profile__swatch elevation-profile__swatch--cut" />
@@ -140,6 +208,10 @@ export function ElevationProfile({
             </span>
           )}
         </div>
+      )}
+
+      {onAddCutPoint && (
+        <p className="elevation-profile__hint">Haz clic en el gráfico para añadir un punto de corte.</p>
       )}
     </div>
   );
