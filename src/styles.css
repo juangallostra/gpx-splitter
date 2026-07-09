@@ -33,6 +33,29 @@ header p {
   margin: 12px 0;
 }
 
+.app__notice {
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app__notice-undo {
+  background: transparent;
+  color: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  padding: 4px 10px;
+  margin: 0;
+}
+
+.app__notice-undo:hover {
+  background: #dbeafe;
+}
+
 .gpx-uploader {
   margin: 16px 0;
   padding: 20px;
@@ -233,6 +256,112 @@ button:hover {
   font-size: 14px;
 }
 
+.descent-list {
+  margin: 24px 0;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.descent-list__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.descent-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.descent-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #7c3aed;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.descent-list li:hover {
+  background: #f1f5f9;
+}
+
+.descent-list__item--active {
+  background: #f5f3ff;
+  border-color: #7c3aed;
+}
+
+.descent-list__info {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: 14px;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  background: #64748b;
+}
+
+.category-badge--HC {
+  background: #b91c1c;
+}
+
+.category-badge--1 {
+  background: #ea580c;
+}
+
+.category-badge--2 {
+  background: #ca8a04;
+}
+
+.category-badge--3 {
+  background: #16a34a;
+}
+
+.editable-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editable-name__edit-btn {
+  background: transparent;
+  border: none;
+  padding: 0 4px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.editable-name__edit-btn:hover {
+  background: transparent;
+}
+
+.editable-name--editing input {
+  padding: 4px 6px;
+  border: 1px solid #2563eb;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.segment-downloads__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .elevation-profile {
   margin: 24px 0;
   padding: 16px;
@@ -272,6 +401,16 @@ button:hover {
   background: #16a34a;
 }
 
+.elevation-profile__swatch--descent {
+  background: #7c3aed;
+}
+
 .elevation-profile__swatch--cut {
   background: #dc2626;
+}
+
+.elevation-profile__hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94a3b8;
 }
