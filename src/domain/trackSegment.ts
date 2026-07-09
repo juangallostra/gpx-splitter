@@ -11,6 +11,17 @@ export interface TrackSegment {
 }
 
 /**
+ * Genera un id determinista a partir del rango de km del tramo (redondeado a 3 decimales,
+ * ~1 metro de precisión). Al no ser aleatorio, el mismo tramo conserva su id entre
+ * recálculos (p. ej. al recalcular segmentos tras editar un punto de corte no relacionado),
+ * lo que permite que nombres personalizados y selecciones sobrevivan al recálculo.
+ */
+export function stableSegmentId(prefix: string, startKm: number, endKm: number | null): string {
+  const round = (km: number) => km.toFixed(3);
+  return `${prefix}-${round(startKm)}-${endKm === null ? 'final' : round(endKm)}`;
+}
+
+/**
  * Genera un nombre de archivo legible para un segmento.
  * Ej: track_km_000_005.gpx, track_km_021-1_final.gpx
  */
@@ -28,3 +39,4 @@ export function segmentFileName(segment: TrackSegment): string {
 
   return `track_km_${start}_${end}.gpx`;
 }
+
