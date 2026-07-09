@@ -1,5 +1,5 @@
 import { TrackPoint } from '../domain/trackPoint';
-import { TrackSegment } from '../domain/trackSegment';
+import { TrackSegment, stableSegmentId } from '../domain/trackSegment';
 
 export class TrackSplitError extends Error {}
 
@@ -92,12 +92,14 @@ export function splitTrackByKilometers(
     segmentPoints.push(getPointAtDistance(points, endM));
 
     const isLast = i === boundariesM.length - 2;
+    const startKm = startM / 1000;
+    const endKm = isLast ? null : endM / 1000;
 
     segments.push({
-      id: crypto.randomUUID(),
+      id: stableSegmentId('seg', startKm, endKm),
       name: `Segmento ${i + 1}`,
-      startKm: startM / 1000,
-      endKm: isLast ? null : endM / 1000,
+      startKm,
+      endKm,
       points: segmentPoints,
     });
   }

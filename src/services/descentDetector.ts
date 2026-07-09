@@ -7,11 +7,11 @@ import {
   SlopeDetectionError,
 } from './slopeDetector';
 
-export type AscentConfig = SlopeConfig;
-export const AscentDetectionError = SlopeDetectionError;
+export type DescentConfig = SlopeConfig;
+export const DescentDetectionError = SlopeDetectionError;
 export { hasEnoughElevationData };
 
-export const DEFAULT_ASCENT_CONFIG: AscentConfig = {
+export const DEFAULT_DESCENT_CONFIG: DescentConfig = {
   minSlope: 0.03, // 3%
   windowMeters: 150,
   minSegmentDistanceM: 300,
@@ -21,6 +21,6 @@ export const DEFAULT_ASCENT_CONFIG: AscentConfig = {
   minGainFilterM: 50,
 };
 
-export function detectAscents(points: TrackPoint[], config: AscentConfig): SlopeSegment[] {
-  return detectSlopeSegments(points, config, 'up', 'Ascenso');
+export function detectDescents(points: TrackPoint[], config: DescentConfig): SlopeSegment[] {
+  return detectSlopeSegments(points, config, 'down', 'Descenso');
 }
